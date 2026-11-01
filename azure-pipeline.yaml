@@ -1,0 +1,33 @@
+trigger:
+  batch: true
+  branches:
+    include:
+      - main
+      - develop
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - task: NodeTool@0
+    displayName: Use Node.js 24
+    inputs:
+      versionSpec: 24.x
+
+  - script: npm ci
+    displayName: Install dependencies
+
+  - task: Docker@2
+    displayName: Build image
+    inputs:
+      command: build
+      Dockerfile: Dockerfile
+      tags: |
+        sp-project-be:$(Build.BuildId)
+        sp-project-be:latest

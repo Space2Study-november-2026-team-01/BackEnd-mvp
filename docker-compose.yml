@@ -1,0 +1,32 @@
+services:
+  api:
+    build: .
+    ports:
+      - '3000:3000'
+    env_file:
+      - .env.example
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: production
+      SERVER_PORT: 3000
+      MONGODB_URL: mongodb://database:27017/sp_project
+    depends_on:
+      database:
+        condition: service_healthy
+
+  database:
+    image: mongo:6
+    ports:
+      - '27018:27017'
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  mongo_data:

@@ -1,0 +1,13 @@
+node_modules
+npm-debug.log*
+.git
+.github
+.husky
+.env
+.env.*
+src/test
+coverage
+*.md
+azure-pipeline.yaml
+.idea
+.DS_Store
