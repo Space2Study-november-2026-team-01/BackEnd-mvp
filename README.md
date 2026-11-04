@@ -64,7 +64,7 @@ Then start the API on the host:
 npm run dev
 ```
 
-The API listens on `http://localhost:3000` when `SERVER_PORT` is `3000`. `npm start` runs the same process without Nodemon and is what the Docker image uses.
+The API listens on `0.0.0.0`. The port is `PORT` when that variable is set, otherwise `SERVER_PORT`, otherwise `3000`. With `SERVER_PORT=3000` and no `PORT`, the local URL is `http://localhost:3000`. `npm start` runs the same process without Nodemon and is what the Docker image uses.
 
 ## Run with Docker
 
