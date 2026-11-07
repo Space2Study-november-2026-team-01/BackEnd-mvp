@@ -6,6 +6,7 @@ const {
 const errors = require('~/consts/errors')
 const tokenService = require('~/services/token')
 const Token = require('~/models/token')
+const User = require('~/models/user')
 const { expectError } = require('~/test/helpers')
 
 describe('Auth controller', () => {
@@ -117,6 +118,66 @@ describe('Auth controller', () => {
       const response = await app.patch('/auth/reset-password/invalid-token').send({ password: 'valid_pass1' })
 
       expectError(400, errors.BAD_RESET_TOKEN, response)
+    })
+  })
+
+  describe('POST /auth/confirm-email', () => {
+    it('should confirm user email with a valid token', async () => {
+      const tokenData = await Token.findOne({
+        user: signupResponse.body.userId,
+        confirmToken: { $exists: true, $ne: null }
+      })
+
+      const { confirmToken, user: userId } = tokenData
+
+      const response = await app.post('/auth/confirm-email').send({
+        confirmToken
+      })
+
+      expect(response.status).toBe(204)
+
+      const updatedUser = await User.findById(userId).select('+isEmailConfirmed')
+
+      expect(updatedUser.isEmailConfirmed).toBe(true)
+
+      const tokenAfterConfirmation = await Token.findOne({ confirmToken })
+
+      expect(tokenAfterConfirmation).toBeNull()
+    })
+
+    it('should return 400 for an invalid confirmation token', async () => {
+      const response = await app.post('/auth/confirm-email').send({
+        confirmToken: 'invalid-token'
+      })
+
+      expectError(400, errors.BAD_CONFIRM_TOKEN, response)
+    })
+
+    it('should return 422 when confirmation token is missing', async () => {
+      const response = await app.post('/auth/confirm-email').send({})
+
+      expectError(422, errors.FIELD_IS_NOT_DEFINED('confirmToken'), response)
+    })
+
+    it('should reject a confirmation token used twice', async () => {
+      const tokenData = await Token.findOne({
+        user: signupResponse.body.userId,
+        confirmToken: { $exists: true, $ne: null }
+      })
+
+      const { confirmToken } = tokenData
+
+      const firstResponse = await app.post('/auth/confirm-email').send({
+        confirmToken
+      })
+
+      expect(firstResponse.status).toBe(204)
+
+      const secondResponse = await app.post('/auth/confirm-email').send({
+        confirmToken
+      })
+
+      expectError(400, errors.BAD_CONFIRM_TOKEN, secondResponse)
     })
   })
 })

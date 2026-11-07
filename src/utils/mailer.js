@@ -46,6 +46,12 @@ const createTransport = async () => {
 }
 
 const sendMail = async (mailOptions) => {
+  if (process.env.NODE_ENV === 'test') {
+    return {
+      messageId: 'test-message'
+    }
+  }
+
   try {
     const transporter = await createTransport()
     await transporter.verify()
