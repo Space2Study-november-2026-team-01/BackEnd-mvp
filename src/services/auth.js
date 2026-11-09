@@ -1,13 +1,16 @@
 const tokenService = require('~/services/token')
 const emailService = require('~/services/email')
+const crypto = require('node:crypto')
 const { getUserByEmail, createUser, privateUpdateUser, getUserById } = require('~/services/user')
+const { verifyGoogleToken } = require('~/services/googleAuth')
 const { createError } = require('~/utils/errorsHelper')
 const {
   EMAIL_NOT_CONFIRMED,
   INCORRECT_CREDENTIALS,
   BAD_RESET_TOKEN,
   BAD_REFRESH_TOKEN,
-  USER_NOT_FOUND
+  USER_NOT_FOUND,
+  BAD_REQUEST
 } = require('~/consts/errors')
 const emailSubject = require('~/consts/emailSubject')
 const {
@@ -56,6 +59,26 @@ const authService = {
     await privateUpdateUser(_id, { lastLogin: new Date() })
 
     return tokens
+  },
+  // Логіка гугл авторизації
+  googleLogin: async (token, role) => {
+    const { email, given_name: firstName, family_name: lastName } = await verifyGoogleToken(token)
+
+    let user = await getUserByEmail(email)
+
+    if (!user) {
+      if (!role) {
+        throw createError(400, BAD_REQUEST)
+      }
+
+      const randomPassword = crypto.randomBytes(32).toString('hex')
+
+      await createUser(role, firstName, lastName, email, randomPassword, undefined, true)
+    } else if (!user.isEmailConfirmed) {
+      await privateUpdateUser(user._id, { isEmailConfirmed: true })
+    }
+
+    return authService.login(email, null, true)
   },
 
   logout: async (refreshToken) => {

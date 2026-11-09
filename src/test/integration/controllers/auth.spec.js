@@ -1,3 +1,8 @@
+jest.mock('~/services/googleAuth', () => ({
+  verifyGoogleToken: jest.fn()
+}))
+const User = require('~/models/user')
+const { verifyGoogleToken } = require('~/services/googleAuth')
 const { serverInit, serverCleanup, stopServer } = require('~/test/setup')
 const {
   lengths: { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH },
@@ -16,6 +21,7 @@ describe('Auth controller', () => {
   })
 
   beforeEach(async () => {
+    verifyGoogleToken.mockReset()
     signupResponse = await app.post('/auth/signup').send(user)
   })
 
@@ -86,6 +92,48 @@ describe('Auth controller', () => {
       const response = await app.post('/auth/signup').send(user)
 
       expectError(409, errors.ALREADY_REGISTERED, response)
+    })
+  })
+  // Блок авторизації через гугл
+  describe('Google Login endpoint', () => {
+    it('should register and login a new user with Google', async () => {
+      verifyGoogleToken.mockResolvedValue({
+        email: 'google@gmail.com',
+        given_name: 'Google',
+        family_name: 'User',
+        email_verified: true
+      })
+
+      const response = await app.post('/auth/google-auth').send({
+        token: 'valid-google-token',
+        role: 'student'
+      })
+
+      expect(response.status).toBe(200)
+      expect(response.body).toHaveProperty('accessToken')
+      expect(response.body).not.toHaveProperty('refreshToken')
+      expect(response.headers['set-cookie']).toBeDefined()
+    })
+
+    it('should login an existing user with Google without creating a duplicate', async () => {
+      verifyGoogleToken.mockResolvedValue({
+        email: user.email,
+        given_name: user.firstName,
+        family_name: user.lastName,
+        email_verified: true
+      })
+
+      const response = await app.post('/auth/google-auth').send({
+        token: 'valid-google-token'
+      })
+
+      expect(response.status).toBe(200)
+      expect(response.body).toHaveProperty('accessToken')
+      expect(response.body).not.toHaveProperty('refreshToken')
+
+      const users = await User.find({ email: user.email })
+
+      expect(users).toHaveLength(1)
     })
   })
 

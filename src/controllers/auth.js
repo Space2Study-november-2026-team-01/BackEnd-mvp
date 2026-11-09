@@ -36,6 +36,19 @@ const login = async (req, res) => {
 
   res.status(200).json(tokens)
 }
+// Логіка авторизації через гугл
+const googleLogin = async (req, res) => {
+  const { token, role } = req.body
+
+  const tokens = await authService.googleLogin(token, role)
+
+  res.cookie(ACCESS_TOKEN, tokens.accessToken, COOKIE_OPTIONS)
+  res.cookie(REFRESH_TOKEN, tokens.refreshToken, COOKIE_OPTIONS)
+
+  delete tokens.refreshToken
+
+  res.status(200).json(tokens)
+}
 
 const logout = async (req, res) => {
   const { refreshToken } = req.cookies
@@ -89,6 +102,7 @@ const updatePassword = async (req, res) => {
 module.exports = {
   signup,
   login,
+  googleLogin,
   logout,
   refreshAccessToken,
   sendResetPasswordEmail,

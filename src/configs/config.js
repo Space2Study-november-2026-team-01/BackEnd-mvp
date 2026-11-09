@@ -1,6 +1,8 @@
 const config = {
   MONGODB_URL: process.env.MONGODB_URL,
   CLIENT_URL: process.env.CLIENT_URL,
+  // Google Client ID
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
   COOKIE_DOMAIN: process.env.COOKIE_DOMAIN,
   SERVER_URL: process.env.SERVER_URL,
   SERVER_PORT: process.env.SERVER_PORT,

@@ -3,7 +3,7 @@ const router = require('express').Router()
 const asyncWrapper = require('~/middlewares/asyncWrapper')
 const validationMiddleware = require('~/middlewares/validation')
 const langMiddleware = require('~/middlewares/appLanguage')
-
+const googleAuthValidationSchema = require('~/validation/schemas/googleAuth')
 const authController = require('~/controllers/auth')
 const signupValidationSchema = require('~/validation/schemas/signup')
 const { loginValidationSchema } = require('~/validation/schemas/login')
@@ -17,6 +17,8 @@ router.post(
   asyncWrapper(authController.signup)
 )
 router.post('/login', validationMiddleware(loginValidationSchema), asyncWrapper(authController.login))
+// Маршрут для гугл-авторизації
+router.post('/google-auth', validationMiddleware(googleAuthValidationSchema), asyncWrapper(authController.googleLogin))
 router.post('/logout', asyncWrapper(authController.logout))
 router.get('/refresh', asyncWrapper(authController.refreshAccessToken))
 router.post(

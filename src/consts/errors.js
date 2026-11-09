@@ -60,6 +60,11 @@ const errors = {
     code: 'BAD_REFRESH_TOKEN',
     message: 'The refresh token is either invalid or has expired.'
   },
+  // Додав окрему помилку для невдалої авторизації через гкгл токен.
+  INVALID_GOOGLE_TOKEN: {
+    code: 'INVALID_GOOGLE_TOKEN',
+    message: 'Google ID token is invalid or email is not verified.'
+  },
   UNAUTHORIZED: {
     code: 'UNAUTHORIZED',
     message: 'The requested URL requires user authorization.'
