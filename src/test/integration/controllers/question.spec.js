@@ -2,6 +2,7 @@ const { serverInit, serverCleanup, stopServer } = require('~/test/setup')
 const testUserAuthentication = require('~/utils/testUserAuth')
 const TokenService = require('~/services/token')
 const Question = require('~/models/question')
+const ResourcesCategory = require('~/models/resourcesCategory')
 const {
   roles: { TUTOR }
 } = require('~/consts/auth')
@@ -9,7 +10,7 @@ const {
 const endpointUrl = '/questions/'
 
 describe('Question controller', () => {
-  let app, server, accessToken, currentUser
+  let app, server, accessToken, currentUser, categories
 
   beforeAll(async () => {
     ;({ app, server } = await serverInit())
@@ -19,12 +20,18 @@ describe('Question controller', () => {
     accessToken = await testUserAuthentication(app, { role: TUTOR })
     currentUser = TokenService.validateAccessToken(accessToken)
 
+    categories = await ResourcesCategory.create([
+      { name: 'Category one', author: currentUser.id },
+      { name: 'Category two', author: currentUser.id }
+    ])
+
     const questions = await Question.create([
       {
         title: 'Older question',
         text: 'Question text',
         answers: [{ text: 'Answer', isCorrect: true }],
         type: 'multipleChoice',
+        category: categories[0]._id,
         author: currentUser.id
       },
       {
@@ -32,6 +39,15 @@ describe('Question controller', () => {
         text: 'Question text',
         answers: [{ text: 'Answer', isCorrect: true }],
         type: 'multipleChoice',
+        category: categories[1]._id,
+        author: currentUser.id
+      },
+      {
+        title: 'Uncategorized question',
+        text: 'Question text',
+        answers: [{ text: 'Answer', isCorrect: true }],
+        type: 'multipleChoice',
+        category: null,
         author: currentUser.id
       }
     ])
@@ -72,7 +88,59 @@ describe('Question controller', () => {
       })
       .set('Cookie', [`accessToken=${accessToken}`])
 
-    expect(ascendingResponse.body.items.map(({ title }) => title)).toEqual(['Older question', 'Newer question'])
-    expect(descendingResponse.body.items.map(({ title }) => title)).toEqual(['Newer question', 'Older question'])
+    expect(ascendingResponse.body.items.map(({ title }) => title)).toEqual([
+      'Older question',
+      'Newer question',
+      'Uncategorized question'
+    ])
+    expect(descendingResponse.body.items.map(({ title }) => title)).toEqual([
+      'Uncategorized question',
+      'Newer question',
+      'Older question'
+    ])
+  })
+
+  it('should filter by a single category ID', async () => {
+    const response = await app
+      .get(endpointUrl)
+      .query({ categories: categories[0]._id.toString() })
+      .set('Cookie', [`accessToken=${accessToken}`])
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body.items.map(({ title }) => title)).toEqual(['Older question'])
+  })
+
+  it('should filter by multiple category IDs', async () => {
+    const response = await app
+      .get(endpointUrl)
+      .query({
+        categories: categories.map(({ _id }) => _id.toString())
+      })
+      .set('Cookie', [`accessToken=${accessToken}`])
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body.items.map(({ title }) => title)).toEqual(['Older question', 'Newer question'])
+  })
+
+  it('should filter by uncategorized questions with a single null value', async () => {
+    const response = await app
+      .get(endpointUrl)
+      .query({ categories: 'null' })
+      .set('Cookie', [`accessToken=${accessToken}`])
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body.items.map(({ title }) => title)).toEqual(['Uncategorized question'])
+  })
+
+  it('should filter by a category ID and uncategorized questions', async () => {
+    const response = await app
+      .get(endpointUrl)
+      .query({
+        categories: [categories[0]._id.toString(), 'null']
+      })
+      .set('Cookie', [`accessToken=${accessToken}`])
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body.items.map(({ title }) => title)).toEqual(['Older question', 'Uncategorized question'])
   })
 })
