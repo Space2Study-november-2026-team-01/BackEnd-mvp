@@ -87,6 +87,66 @@ describe('ResourceCategory controller', () => {
   })
 
   describe(`GET ${endpointUrl}`, () => {
+    it('should search category names without case sensitivity', async () => {
+      const response = await app
+        .get(endpointUrl)
+        .query({ name: 'chemical' })
+        .set('Cookie', [`accessToken=${accessToken}`])
+
+      expect(response.statusCode).toBe(200)
+      expect(response.body.items.map(({ name }) => name)).toEqual(['Chemical Category'])
+    })
+
+    it('should return all categories when the search name is empty', async () => {
+      const response = await app
+        .get(endpointUrl)
+        .query({ name: '' })
+        .set('Cookie', [`accessToken=${accessToken}`])
+
+      expect(response.statusCode).toBe(200)
+      expect(response.body.items.map(({ name }) => name)).toEqual(['Chemical Category'])
+    })
+
+    it('should find categories by partial name and exclude unrelated categories', async () => {
+      await ResourcesCategory.create([
+        { name: 'Chemistry Resources', author: currentUser.id },
+        { name: 'Biology Resources', author: currentUser.id }
+      ])
+
+      const response = await app
+        .get(endpointUrl)
+        .query({ name: 'chem' })
+        .set('Cookie', [`accessToken=${accessToken}`])
+
+      expect(response.statusCode).toBe(200)
+      expect(response.body.items.map(({ name }) => name)).toEqual(
+        expect.arrayContaining(['Chemical Category', 'Chemistry Resources'])
+      )
+      expect(response.body.items).toHaveLength(2)
+    })
+
+    it('should combine category name search with sorting and pagination', async () => {
+      await ResourcesCategory.create([
+        { name: 'Alpha Topic', author: currentUser.id },
+        { name: 'Beta Topic', author: currentUser.id },
+        { name: 'Gamma Topic', author: currentUser.id }
+      ])
+
+      const response = await app
+        .get(endpointUrl)
+        .query({
+          name: 'topic',
+          sort: { order: 'asc', orderBy: 'name' },
+          skip: 1,
+          limit: 1
+        })
+        .set('Cookie', [`accessToken=${accessToken}`])
+
+      expect(response.statusCode).toBe(200)
+      expect(response.body.count).toBe(3)
+      expect(response.body.items.map(({ name }) => name)).toEqual(['Beta Topic'])
+    })
+
     it('should sort categories by updatedAt in both directions', async () => {
       const secondCategory = await app
         .post(endpointUrl)

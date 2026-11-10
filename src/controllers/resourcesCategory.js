@@ -16,7 +16,7 @@ const getResourcesCategories = async (req, res) => {
   const { id: author } = req.user
   const { name, sort, skip, limit } = req.query
 
-  const match = getMatchOptions({ author, name: getRegex(name) })
+  const match = getMatchOptions({ author, name: { ...getRegex(name), $options: 'i' } })
   const sortOptions = getSortOptions(sort)
 
   const resourcesCategories = await resourcesCategoryService.getResourcesCategories(
