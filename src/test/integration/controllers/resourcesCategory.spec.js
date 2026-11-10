@@ -27,6 +27,18 @@ const studentUserData = {
   lastLoginAs: 'student'
 }
 
+const otherTutorUserData = {
+  role: TUTOR,
+  firstName: 'Other',
+  lastName: 'Tutor',
+  email: 'other.tutor@gmail.com',
+  password: 'Qwerty123@',
+  appLanguage: 'en',
+  isEmailConfirmed: true,
+  lastLogin: new Date().toJSON(),
+  lastLoginAs: TUTOR
+}
+
 const updateResourceCategoryData = {
   name: 'Computer Science'
 }
@@ -215,6 +227,34 @@ describe('ResourceCategory controller', () => {
         .set('Cookie', [`accessToken=${studentAccessToken}`])
 
       expectError(403, FORBIDDEN, response)
+    })
+  })
+
+  describe(`DELETE ${endpointUrl}:id`, () => {
+    it('should delete resource category owned by the authenticated tutor', async () => {
+      const response = await app
+        .delete(endpointUrl + testResourceCategory.body._id)
+        .set('Cookie', [`accessToken=${accessToken}`])
+
+      expect(response.statusCode).toBe(204)
+      expect(await ResourcesCategory.exists({ _id: testResourceCategory.body._id })).toBeNull()
+    })
+
+    it("should throw FORBIDDEN when deleting another tutor's category", async () => {
+      const otherTutorAccessToken = await testUserAuthentication(app, otherTutorUserData)
+      const response = await app
+        .delete(endpointUrl + testResourceCategory.body._id)
+        .set('Cookie', [`accessToken=${otherTutorAccessToken}`])
+
+      expectError(403, FORBIDDEN, response)
+      expect(await ResourcesCategory.exists({ _id: testResourceCategory.body._id })).not.toBeNull()
+    })
+
+    it('should throw UNAUTHORIZED without an access token', async () => {
+      const response = await app.delete(endpointUrl + testResourceCategory.body._id)
+
+      expectError(401, UNAUTHORIZED, response)
+      expect(await ResourcesCategory.exists({ _id: testResourceCategory.body._id })).not.toBeNull()
     })
   })
 })
