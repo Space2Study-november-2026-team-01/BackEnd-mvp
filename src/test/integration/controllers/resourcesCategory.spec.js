@@ -3,6 +3,8 @@ const { expectError } = require('~/test/helpers')
 const { UNAUTHORIZED, FORBIDDEN } = require('~/consts/errors')
 const testUserAuthentication = require('~/utils/testUserAuth')
 const TokenService = require('~/services/token')
+const ResourcesCategory = require('~/models/resourcesCategory')
+const { Types } = require('mongoose')
 const {
   roles: { TUTOR }
 } = require('~/consts/auth')
@@ -81,6 +83,52 @@ describe('ResourceCategory controller', () => {
         .set('Cookie', [`accessToken=${studentAccessToken}`])
 
       expectError(403, FORBIDDEN, response)
+    })
+  })
+
+  describe(`GET ${endpointUrl}`, () => {
+    it('should sort categories by updatedAt in both directions', async () => {
+      const secondCategory = await app
+        .post(endpointUrl)
+        .send({ name: 'Biology Category' })
+        .set('Cookie', [`accessToken=${accessToken}`])
+      const olderDate = new Date('2024-01-01T00:00:00.000Z')
+      const newerDate = new Date('2024-02-01T00:00:00.000Z')
+
+      await ResourcesCategory.collection.updateOne(
+        { _id: new Types.ObjectId(testResourceCategory.body._id) },
+        { $set: { updatedAt: newerDate } }
+      )
+      await ResourcesCategory.collection.updateOne(
+        { _id: new Types.ObjectId(secondCategory.body._id) },
+        { $set: { updatedAt: olderDate } }
+      )
+
+      const ascendingResponse = await app
+        .get(endpointUrl)
+        .query({
+          sort: { order: 'asc', orderBy: 'updatedAt' },
+          skip: 0,
+          limit: 10
+        })
+        .set('Cookie', [`accessToken=${accessToken}`])
+      const descendingResponse = await app
+        .get(endpointUrl)
+        .query({
+          sort: { order: 'desc', orderBy: 'updatedAt' },
+          skip: 0,
+          limit: 10
+        })
+        .set('Cookie', [`accessToken=${accessToken}`])
+
+      expect(ascendingResponse.body.items.map(({ _id }) => _id)).toEqual([
+        secondCategory.body._id,
+        testResourceCategory.body._id
+      ])
+      expect(descendingResponse.body.items.map(({ _id }) => _id)).toEqual([
+        testResourceCategory.body._id,
+        secondCategory.body._id
+      ])
     })
   })
 
