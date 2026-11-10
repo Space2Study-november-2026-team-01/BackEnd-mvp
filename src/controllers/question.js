@@ -26,9 +26,9 @@ const getQuestions = async (req, res) => {
 }
 
 const getQuestionById = async (req, res) => {
-  const { id } = req.params
+  const { questionId } = req.params
 
-  const question = await questionService.getQuestionById(id)
+  const question = await questionService.getQuestionById(questionId)
 
   res.status(200).json(question)
 }

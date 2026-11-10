@@ -1,4 +1,5 @@
 const { serverInit, serverCleanup, stopServer } = require('~/test/setup')
+const mongoose = require('mongoose')
 const testUserAuthentication = require('~/utils/testUserAuth')
 const TokenService = require('~/services/token')
 const Question = require('~/models/question')
@@ -68,6 +69,55 @@ describe('Question controller', () => {
 
   afterAll(async () => {
     await stopServer(server)
+  })
+
+  it('should retrieve a question with the data required by the edit form', async () => {
+    const question = await Question.findOne({ title: 'Older question' }).lean()
+    const response = await app.get(`${endpointUrl}${question._id}`).set('Cookie', [`accessToken=${accessToken}`])
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body).toMatchObject({
+      _id: question._id.toString(),
+      title: question.title,
+      text: question.text,
+      answers: question.answers,
+      type: question.type,
+      category: question.category.toString()
+    })
+  })
+
+  it('should return a 404 for a valid but nonexistent question ID', async () => {
+    const missingQuestionId = new mongoose.Types.ObjectId().toString()
+    const response = await app.get(`${endpointUrl}${missingQuestionId}`).set('Cookie', [`accessToken=${accessToken}`])
+
+    expect(response.statusCode).toBe(404)
+    expect(response.body.code).toBe('DOCUMENT_NOT_FOUND')
+  })
+
+  it('should reject an invalid question ID', async () => {
+    const response = await app.get(`${endpointUrl}invalid-id`).set('Cookie', [`accessToken=${accessToken}`])
+
+    expect(response.statusCode).toBe(400)
+    expect(response.body.code).toBe('INVALID_ID')
+  })
+
+  it('should return saved answers for an open-answer question', async () => {
+    const [question] = await Question.create([
+      {
+        title: 'Open-answer question',
+        text: 'Question text',
+        answers: [{ text: 'Saved response', isCorrect: false }],
+        type: 'openAnswer',
+        author: currentUser.id
+      }
+    ])
+    const response = await app.get(`${endpointUrl}${question._id}`).set('Cookie', [`accessToken=${accessToken}`])
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body).toMatchObject({
+      type: 'openAnswer',
+      answers: [{ text: 'Saved response', isCorrect: false }]
+    })
   })
 
   it('should sort questions by updatedAt in both directions', async () => {
