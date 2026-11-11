@@ -9,6 +9,7 @@ const signupValidationSchema = require('~/validation/schemas/signup')
 const { loginValidationSchema } = require('~/validation/schemas/login')
 const resetPasswordValidationSchema = require('~/validation/schemas/resetPassword')
 const forgotPasswordValidationSchema = require('~/validation/schemas/forgotPassword')
+const confirmEmailValidationSchema = require('~/validation/schemas/confirmEmail')
 
 router.post(
   '/signup',
@@ -30,6 +31,11 @@ router.patch(
   validationMiddleware(resetPasswordValidationSchema),
   langMiddleware,
   asyncWrapper(authController.updatePassword)
+)
+router.post(
+  '/confirm-email',
+  validationMiddleware(confirmEmailValidationSchema),
+  asyncWrapper(authController.confirmEmail)
 )
 
 module.exports = router
