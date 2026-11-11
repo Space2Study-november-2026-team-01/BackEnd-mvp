@@ -44,7 +44,7 @@ const authService = {
     const { id: userId } = tokenData
 
     await privateUpdateUser(userId, { isEmailConfirmed: true })
-    await tokenService.removeConfirmToken(confirmToken)
+    await tokenService.saveToken(userId, null, CONFIRM_TOKEN)
   },
 
   login: async (email, password, isFromGoogle) => {
