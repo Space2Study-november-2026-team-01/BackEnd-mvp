@@ -36,7 +36,7 @@ const login = async (req, res) => {
 
   res.status(200).json(tokens)
 }
-// Логіка авторизації через гугл
+
 const googleLogin = async (req, res) => {
   const { token, role } = req.body
 

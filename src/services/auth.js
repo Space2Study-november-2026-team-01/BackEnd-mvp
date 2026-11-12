@@ -60,9 +60,23 @@ const authService = {
 
     return tokens
   },
-  // Логіка гугл авторизації
+
   googleLogin: async (token, role) => {
-    const { email, given_name: firstName, family_name: lastName } = await verifyGoogleToken(token)
+    const payload = await verifyGoogleToken(token)
+    const email = payload.email.toLowerCase()
+    let firstName = payload.given_name
+    let lastName = payload.family_name
+
+    if (!firstName || !lastName) {
+      const nameParts = payload.name?.trim().split(/\s+/).filter(Boolean) || []
+
+      firstName = firstName || nameParts[0]
+      lastName = lastName || nameParts.slice(1).join(' ')
+    }
+
+    if (!firstName || !lastName) {
+      throw createError(400, BAD_REQUEST)
+    }
 
     let user = await getUserByEmail(email)
 
@@ -75,7 +89,12 @@ const authService = {
 
       await createUser(role, firstName, lastName, email, randomPassword, undefined, true)
     } else if (!user.isEmailConfirmed) {
-      await privateUpdateUser(user._id, { isEmailConfirmed: true })
+      const randomPassword = crypto.randomBytes(32).toString('hex')
+
+      await privateUpdateUser(user._id, {
+        password: randomPassword,
+        isEmailConfirmed: true
+      })
     }
 
     return authService.login(email, null, true)

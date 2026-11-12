@@ -7,7 +7,6 @@ const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID)
 const { createError } = require('~/utils/errorsHelper')
 const { INVALID_GOOGLE_TOKEN } = require('~/consts/errors')
 
-// Перевірка справжньості токена та повернення інформації про користувача, виведення помилки.
 const verifyGoogleToken = async (idToken) => {
   try {
     const ticket = await googleClient.verifyIdToken({
@@ -16,7 +15,7 @@ const verifyGoogleToken = async (idToken) => {
     })
 
     const payload = ticket.getPayload()
-    // на випадок коли Google не поверне payload.
+
     if (!payload || !payload.email_verified) {
       throw createError(401, INVALID_GOOGLE_TOKEN)
     }
