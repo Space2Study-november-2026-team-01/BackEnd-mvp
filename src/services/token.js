@@ -15,6 +15,7 @@ const {
 const { INVALID_TOKEN_NAME } = require('~/consts/errors')
 const { tokenNames } = require('~/consts/auth')
 const { createError } = require('~/utils/errorsHelper')
+const crypto = require('node:crypto')
 
 const tokenService = {
   generateTokens: (payload) => {
@@ -23,7 +24,8 @@ const tokenService = {
     })
 
     const refreshToken = jwt.sign(payload, JWT_REFRESH_SECRET, {
-      expiresIn: JWT_REFRESH_EXPIRES_IN
+      expiresIn: JWT_REFRESH_EXPIRES_IN,
+      jwtid: crypto.randomUUID()
     })
 
     return {
