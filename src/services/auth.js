@@ -1,6 +1,8 @@
 const tokenService = require('~/services/token')
 const emailService = require('~/services/email')
+const crypto = require('node:crypto')
 const { getUserByEmail, createUser, privateUpdateUser, getUserById } = require('~/services/user')
+const { verifyGoogleToken } = require('~/services/googleAuth')
 const { createError } = require('~/utils/errorsHelper')
 const {
   EMAIL_NOT_CONFIRMED,
@@ -8,7 +10,8 @@ const {
   BAD_RESET_TOKEN,
   BAD_CONFIRM_TOKEN,
   BAD_REFRESH_TOKEN,
-  USER_NOT_FOUND
+  USER_NOT_FOUND,
+  BAD_REQUEST
 } = require('~/consts/errors')
 const emailSubject = require('~/consts/emailSubject')
 const {
@@ -76,6 +79,45 @@ const authService = {
     await privateUpdateUser(_id, { lastLogin: new Date() })
 
     return tokens
+  },
+
+  googleLogin: async (token, role) => {
+    const payload = await verifyGoogleToken(token)
+    const email = payload.email.toLowerCase()
+    let firstName = payload.given_name
+    let lastName = payload.family_name
+
+    if (!firstName || !lastName) {
+      const nameParts = payload.name?.trim().split(/\s+/).filter(Boolean) || []
+
+      firstName = firstName || nameParts[0]
+      lastName = lastName || nameParts.slice(1).join(' ')
+    }
+
+    if (!firstName || !lastName) {
+      throw createError(400, BAD_REQUEST)
+    }
+
+    let user = await getUserByEmail(email)
+
+    if (!user) {
+      if (!role) {
+        throw createError(400, BAD_REQUEST)
+      }
+
+      const randomPassword = crypto.randomBytes(32).toString('hex')
+
+      await createUser(role, firstName, lastName, email, randomPassword, undefined, true)
+    } else if (!user.isEmailConfirmed) {
+      const randomPassword = crypto.randomBytes(32).toString('hex')
+
+      await privateUpdateUser(user._id, {
+        password: randomPassword,
+        isEmailConfirmed: true
+      })
+    }
+
+    return authService.login(email, null, true)
   },
 
   logout: async (refreshToken) => {

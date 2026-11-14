@@ -1,3 +1,8 @@
+jest.mock('~/services/googleAuth', () => ({
+  verifyGoogleToken: jest.fn()
+}))
+const User = require('~/models/user')
+const { verifyGoogleToken } = require('~/services/googleAuth')
 const { serverInit, serverCleanup, stopServer } = require('~/test/setup')
 const {
   lengths: { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH },
@@ -17,6 +22,7 @@ describe('Auth controller', () => {
   })
 
   beforeEach(async () => {
+    verifyGoogleToken.mockReset()
     signupResponse = await app.post('/auth/signup').send(user)
   })
 
@@ -87,6 +93,137 @@ describe('Auth controller', () => {
       const response = await app.post('/auth/signup').send(user)
 
       expectError(409, errors.ALREADY_REGISTERED, response)
+    })
+  })
+  describe('Google Login endpoint', () => {
+    it('should register and login a new user with Google', async () => {
+      verifyGoogleToken.mockResolvedValue({
+        email: 'google@gmail.com',
+        given_name: 'Google',
+        family_name: 'User',
+        email_verified: true
+      })
+
+      const response = await app.post('/auth/google-auth').send({
+        token: 'valid-google-token',
+        role: 'student'
+      })
+
+      expect(response.status).toBe(200)
+      expect(response.body).toHaveProperty('accessToken')
+      expect(response.body).not.toHaveProperty('refreshToken')
+      expect(response.headers['set-cookie']).toBeDefined()
+    })
+
+    it('should login an existing user with Google without creating a duplicate', async () => {
+      verifyGoogleToken.mockResolvedValue({
+        email: user.email.toUpperCase(),
+        given_name: user.firstName,
+        family_name: user.lastName,
+        email_verified: true
+      })
+      const existingUser = await User.findOne({ email: user.email }).select('+password +isEmailConfirmed')
+      const oldPassword = existingUser.password
+
+      const response = await app.post('/auth/google-auth').send({
+        token: 'valid-google-token'
+      })
+
+      expect(response.status).toBe(200)
+      expect(response.body).toHaveProperty('accessToken')
+      expect(response.body).not.toHaveProperty('refreshToken')
+
+      const users = await User.find({ email: user.email })
+
+      expect(users).toHaveLength(1)
+      const updatedUser = await User.findOne({ email: user.email }).select('+password +isEmailConfirmed')
+
+      expect(updatedUser.isEmailConfirmed).toBe(true)
+      expect(updatedUser.password).not.toBe(oldPassword)
+    })
+
+    it('should return an error for an invalid Google token', async () => {
+      verifyGoogleToken.mockRejectedValue(
+        Object.assign(new Error(errors.INVALID_GOOGLE_TOKEN.message), {
+          status: 401,
+          code: errors.INVALID_GOOGLE_TOKEN.code
+        })
+      )
+
+      const response = await app.post('/auth/google-auth').send({
+        token: 'invalid-google-token',
+        role: 'student'
+      })
+
+      expectError(401, errors.INVALID_GOOGLE_TOKEN, response)
+    })
+
+    it('should return an error when a new Google user has no role', async () => {
+      verifyGoogleToken.mockResolvedValue({
+        email: 'google-no-role@gmail.com',
+        given_name: 'Google',
+        family_name: 'User',
+        email_verified: true
+      })
+
+      const response = await app.post('/auth/google-auth').send({
+        token: 'valid-google-token'
+      })
+
+      expectError(400, errors.BAD_REQUEST, response)
+
+      const createdUser = await User.findOne({
+        email: 'google-no-role@gmail.com'
+      })
+
+      expect(createdUser).toBeNull()
+    })
+
+    it('should register a new Google user using full name when family_name is missing', async () => {
+      verifyGoogleToken.mockResolvedValue({
+        email: 'google-fullname@gmail.com',
+        name: 'John Michael Smith',
+        given_name: 'John',
+        email_verified: true
+      })
+
+      const response = await app.post('/auth/google-auth').send({
+        token: 'valid-google-token',
+        role: 'student'
+      })
+
+      expect(response.status).toBe(200)
+
+      const createdUser = await User.findOne({
+        email: 'google-fullname@gmail.com'
+      })
+
+      expect(createdUser).toMatchObject({
+        firstName: 'John',
+        lastName: 'Michael Smith'
+      })
+    })
+
+    it('should return an error when Google does not provide a last name', async () => {
+      verifyGoogleToken.mockResolvedValue({
+        email: 'google-no-lastname@gmail.com',
+        name: 'John',
+        given_name: 'John',
+        email_verified: true
+      })
+
+      const response = await app.post('/auth/google-auth').send({
+        token: 'valid-google-token',
+        role: 'student'
+      })
+
+      expectError(400, errors.BAD_REQUEST, response)
+
+      const createdUser = await User.findOne({
+        email: 'google-no-lastname@gmail.com'
+      })
+
+      expect(createdUser).toBeNull()
     })
   })
 
