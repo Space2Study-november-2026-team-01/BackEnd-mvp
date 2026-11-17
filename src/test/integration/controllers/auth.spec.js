@@ -1,11 +1,10 @@
 jest.mock('~/services/googleAuth', () => ({
   verifyGoogleToken: jest.fn()
 }))
-const User = require('~/models/user')
 const { verifyGoogleToken } = require('~/services/googleAuth')
 const { serverInit, serverCleanup, stopServer } = require('~/test/setup')
 const {
-  lengths: { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH },
+  lengths: { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH, MAX_NAME_LENGTH },
   enums: { ROLE_ENUM }
 } = require('~/consts/validation')
 const errors = require('~/consts/errors')
@@ -221,6 +220,28 @@ describe('Auth controller', () => {
 
       const createdUser = await User.findOne({
         email: 'google-no-lastname@gmail.com'
+      })
+
+      expect(createdUser).toBeNull()
+    })
+
+    it('should return an error when a new Google user name is longer than allowed', async () => {
+      verifyGoogleToken.mockResolvedValue({
+        email: 'google-long-name@gmail.com',
+        given_name: 'A'.repeat(MAX_NAME_LENGTH + 1),
+        family_name: 'User',
+        email_verified: true
+      })
+
+      const response = await app.post('/auth/google-auth').send({
+        token: 'valid-google-token',
+        role: 'student'
+      })
+
+      expectError(400, errors.BAD_REQUEST, response)
+
+      const createdUser = await User.findOne({
+        email: 'google-long-name@gmail.com'
       })
 
       expect(createdUser).toBeNull()

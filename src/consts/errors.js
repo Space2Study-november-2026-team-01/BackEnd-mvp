@@ -64,6 +64,10 @@ const errors = {
     code: 'INVALID_GOOGLE_TOKEN',
     message: 'Google ID token is invalid or email is not verified.'
   },
+  GOOGLE_AUTH_NOT_CONFIGURED: {
+    code: 'GOOGLE_AUTH_NOT_CONFIGURED',
+    message: 'Google client id is not configured.'
+  },
   UNAUTHORIZED: {
     code: 'UNAUTHORIZED',
     message: 'The requested URL requires user authorization.'

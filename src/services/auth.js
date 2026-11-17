@@ -17,6 +17,9 @@ const emailSubject = require('~/consts/emailSubject')
 const {
   tokenNames: { REFRESH_TOKEN, RESET_TOKEN, CONFIRM_TOKEN }
 } = require('~/consts/auth')
+const {
+  lengths: { MAX_NAME_LENGTH }
+} = require('~/consts/validation')
 
 const authService = {
   signup: async (role, firstName, lastName, email, password, language) => {
@@ -102,6 +105,10 @@ const authService = {
 
     if (!user) {
       if (!role) {
+        throw createError(400, BAD_REQUEST)
+      }
+
+      if (firstName.length > MAX_NAME_LENGTH || lastName.length > MAX_NAME_LENGTH) {
         throw createError(400, BAD_REQUEST)
       }
 

@@ -27,6 +27,18 @@ describe('Google Auth service', () => {
     expect(result).toEqual(payload)
   })
 
+  it('Should throw INVALID_GOOGLE_TOKEN when email is missing', async () => {
+    mockVerifyIdToken.mockResolvedValue({
+      getPayload: jest.fn().mockReturnValue({
+        email_verified: true
+      })
+    })
+
+    await expect(verifyGoogleToken('token-without-email')).rejects.toMatchObject({
+      code: INVALID_GOOGLE_TOKEN.code
+    })
+  })
+
   it('Should throw INVALID_GOOGLE_TOKEN when email is not verified', async () => {
     const payload = {
       email: 'google@gmail.com',
@@ -58,5 +70,25 @@ describe('Google Auth service', () => {
     await expect(verifyGoogleToken('invalid-google-token')).rejects.toMatchObject({
       code: INVALID_GOOGLE_TOKEN.code
     })
+  })
+
+  it('Should throw GOOGLE_AUTH_NOT_CONFIGURED when Google client id is missing', async () => {
+    let verifyWithoutClientId
+
+    jest.isolateModules(() => {
+      jest.doMock('~/configs/config', () => ({
+        config: { GOOGLE_CLIENT_ID: '' }
+      }))
+
+      verifyWithoutClientId = require('~/services/googleAuth').verifyGoogleToken
+    })
+
+    await expect(verifyWithoutClientId('valid-google-token')).rejects.toMatchObject({
+      code: 'GOOGLE_AUTH_NOT_CONFIGURED',
+      status: 500
+    })
+
+    jest.unmock('~/configs/config')
+    jest.resetModules()
   })
 })
