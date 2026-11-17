@@ -7,6 +7,7 @@ const User = require('~/models/user')
 const Token = require('~/models/token')
 const emailService = require('~/services/email')
 const tokenService = require('~/services/token')
+const errors = require('~/consts/errors')
 
 jest.mock('~/services/email', () => ({
   sendEmail: jest.fn()
@@ -264,7 +265,7 @@ describe('Auth service', () => {
       await expect(authService.refreshAccessToken(tokens.refreshToken)).rejects.toThrow()
     })
 
-    it('should throw if user does not exist', async () => {
+    it('should throw USER_NOT_FOUND if user does not exist', async () => {
       const userId = new mongoose.Types.ObjectId()
 
       const tokens = tokenService.generateTokens({
@@ -278,7 +279,10 @@ describe('Auth service', () => {
         refreshToken: tokens.refreshToken
       })
 
-      await expect(authService.refreshAccessToken(tokens.refreshToken)).rejects.toThrow()
+      await expect(authService.refreshAccessToken(tokens.refreshToken)).rejects.toMatchObject({
+        code: errors.USER_NOT_FOUND.code,
+        status: 401
+      })
     })
   })
 })
