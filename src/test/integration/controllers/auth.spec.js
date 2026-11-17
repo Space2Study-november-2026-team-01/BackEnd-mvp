@@ -1,16 +1,16 @@
 jest.mock('~/services/googleAuth', () => ({
   verifyGoogleToken: jest.fn()
 }))
-const User = require('~/models/user')
 const { verifyGoogleToken } = require('~/services/googleAuth')
 const { serverInit, serverCleanup, stopServer } = require('~/test/setup')
 const {
-  lengths: { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH },
+  lengths: { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH, MAX_NAME_LENGTH },
   enums: { ROLE_ENUM }
 } = require('~/consts/validation')
 const errors = require('~/consts/errors')
 const tokenService = require('~/services/token')
 const Token = require('~/models/token')
+const User = require('~/models/user')
 const { expectError } = require('~/test/helpers')
 
 describe('Auth controller', () => {
@@ -224,6 +224,28 @@ describe('Auth controller', () => {
 
       expect(createdUser).toBeNull()
     })
+
+    it('should return an error when a new Google user name is longer than allowed', async () => {
+      verifyGoogleToken.mockResolvedValue({
+        email: 'google-long-name@gmail.com',
+        given_name: 'A'.repeat(MAX_NAME_LENGTH + 1),
+        family_name: 'User',
+        email_verified: true
+      })
+
+      const response = await app.post('/auth/google-auth').send({
+        token: 'valid-google-token',
+        role: 'student'
+      })
+
+      expectError(400, errors.BAD_REQUEST, response)
+
+      const createdUser = await User.findOne({
+        email: 'google-long-name@gmail.com'
+      })
+
+      expect(createdUser).toBeNull()
+    })
   })
 
   describe('SendResetPasswordEmail endpoint', () => {
@@ -254,6 +276,66 @@ describe('Auth controller', () => {
       const response = await app.patch('/auth/reset-password/invalid-token').send({ password: 'valid_pass1' })
 
       expectError(400, errors.BAD_RESET_TOKEN, response)
+    })
+  })
+
+  describe('POST /auth/confirm-email', () => {
+    it('should confirm user email with a valid token', async () => {
+      const tokenData = await Token.findOne({
+        user: signupResponse.body.userId,
+        confirmToken: { $exists: true, $ne: null }
+      })
+
+      const { confirmToken, user: userId } = tokenData
+
+      const response = await app.post('/auth/confirm-email').send({
+        confirmToken
+      })
+
+      expect(response.status).toBe(204)
+
+      const updatedUser = await User.findById(userId).select('+isEmailConfirmed')
+
+      expect(updatedUser.isEmailConfirmed).toBe(true)
+
+      const tokenAfterConfirmation = await Token.findOne({ confirmToken })
+
+      expect(tokenAfterConfirmation).toBeNull()
+    })
+
+    it('should return 400 for an invalid confirmation token', async () => {
+      const response = await app.post('/auth/confirm-email').send({
+        confirmToken: 'invalid-token'
+      })
+
+      expectError(400, errors.BAD_CONFIRM_TOKEN, response)
+    })
+
+    it('should return 422 when confirmation token is missing', async () => {
+      const response = await app.post('/auth/confirm-email').send({})
+
+      expectError(422, errors.FIELD_IS_NOT_DEFINED('confirmToken'), response)
+    })
+
+    it('should reject a confirmation token used twice', async () => {
+      const tokenData = await Token.findOne({
+        user: signupResponse.body.userId,
+        confirmToken: { $exists: true, $ne: null }
+      })
+
+      const { confirmToken } = tokenData
+
+      const firstResponse = await app.post('/auth/confirm-email').send({
+        confirmToken
+      })
+
+      expect(firstResponse.status).toBe(204)
+
+      const secondResponse = await app.post('/auth/confirm-email').send({
+        confirmToken
+      })
+
+      expectError(400, errors.BAD_CONFIRM_TOKEN, secondResponse)
     })
   })
 })

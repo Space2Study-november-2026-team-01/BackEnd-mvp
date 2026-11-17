@@ -1,6 +1,8 @@
 const express = require('express')
 const cors = require('cors')
 const cookieParser = require('cookie-parser')
+const swaggerUi = require('swagger-ui-express')
+const swaggerSpec = require('../../docs/swagger')
 
 const {
   config: { CLIENT_URL }
@@ -21,6 +23,8 @@ const initialization = (app) => {
       allowedHeaders: 'Content-Type, Authorization'
     })
   )
+
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 
   app.use('/', router)
 

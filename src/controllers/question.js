@@ -1,16 +1,21 @@
 const questionService = require('~/services/question')
 const getCategoriesOptions = require('~/utils/getCategoriesOption')
 const getMatchOptions = require('~/utils/getMatchOptions')
+const getRegex = require('~/utils/getRegex')
 const getSortOptions = require('~/utils/getSortOptions')
+
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 const getQuestions = async (req, res) => {
   const { id: author } = req.user
   const { title, sort, skip, limit, categories } = req.query
   const categoriesOptions = getCategoriesOptions(categories)
+  const titleFilter =
+    typeof title === 'string' && title ? { ...getRegex(escapeRegex(title)), $options: 'i' } : undefined
 
   const match = getMatchOptions({
     author,
-    title,
+    title: titleFilter,
     category: categoriesOptions
   })
   const sortOptions = getSortOptions(sort)
@@ -21,9 +26,9 @@ const getQuestions = async (req, res) => {
 }
 
 const getQuestionById = async (req, res) => {
-  const { id } = req.params
+  const { questionId } = req.params
 
-  const question = await questionService.getQuestionById(id)
+  const question = await questionService.getQuestionById(questionId)
 
   res.status(200).json(question)
 }

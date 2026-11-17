@@ -8,6 +8,7 @@ const {
   EMAIL_NOT_CONFIRMED,
   INCORRECT_CREDENTIALS,
   BAD_RESET_TOKEN,
+  BAD_CONFIRM_TOKEN,
   BAD_REFRESH_TOKEN,
   USER_NOT_FOUND,
   BAD_REQUEST
@@ -16,6 +17,9 @@ const emailSubject = require('~/consts/emailSubject')
 const {
   tokenNames: { REFRESH_TOKEN, RESET_TOKEN, CONFIRM_TOKEN }
 } = require('~/consts/auth')
+const {
+  lengths: { MAX_NAME_LENGTH }
+} = require('~/consts/validation')
 
 const authService = {
   signup: async (role, firstName, lastName, email, password, language) => {
@@ -28,6 +32,25 @@ const authService = {
       userId: user._id,
       userEmail: user.email
     }
+  },
+
+  confirmEmail: async (confirmToken) => {
+    const tokenData = tokenService.validateConfirmToken(confirmToken)
+
+    if (!tokenData) {
+      throw createError(400, BAD_CONFIRM_TOKEN)
+    }
+
+    const tokenFromDB = await tokenService.findToken(confirmToken, CONFIRM_TOKEN)
+
+    if (!tokenFromDB || String(tokenFromDB.user) !== tokenData.id) {
+      throw createError(400, BAD_CONFIRM_TOKEN)
+    }
+
+    const { id: userId } = tokenData
+
+    await privateUpdateUser(userId, { isEmailConfirmed: true })
+    await tokenService.saveToken(userId, null, CONFIRM_TOKEN)
   },
 
   login: async (email, password, isFromGoogle) => {
@@ -82,6 +105,10 @@ const authService = {
 
     if (!user) {
       if (!role) {
+        throw createError(400, BAD_REQUEST)
+      }
+
+      if (firstName.length > MAX_NAME_LENGTH || lastName.length > MAX_NAME_LENGTH) {
         throw createError(400, BAD_REQUEST)
       }
 
