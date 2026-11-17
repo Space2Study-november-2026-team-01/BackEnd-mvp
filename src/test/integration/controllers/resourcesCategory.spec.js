@@ -3,6 +3,8 @@ const { expectError } = require('~/test/helpers')
 const { UNAUTHORIZED, FORBIDDEN } = require('~/consts/errors')
 const testUserAuthentication = require('~/utils/testUserAuth')
 const TokenService = require('~/services/token')
+const ResourcesCategory = require('~/models/resourcesCategory')
+const { Types } = require('mongoose')
 const {
   roles: { TUTOR }
 } = require('~/consts/auth')
@@ -23,6 +25,18 @@ const studentUserData = {
   isEmailConfirmed: true,
   lastLogin: new Date().toJSON(),
   lastLoginAs: 'student'
+}
+
+const otherTutorUserData = {
+  role: TUTOR,
+  firstName: 'Other',
+  lastName: 'Tutor',
+  email: 'other.tutor@gmail.com',
+  password: 'Qwerty123@',
+  appLanguage: 'en',
+  isEmailConfirmed: true,
+  lastLogin: new Date().toJSON(),
+  lastLoginAs: TUTOR
 }
 
 const updateResourceCategoryData = {
@@ -84,6 +98,112 @@ describe('ResourceCategory controller', () => {
     })
   })
 
+  describe(`GET ${endpointUrl}`, () => {
+    it('should search category names without case sensitivity', async () => {
+      const response = await app
+        .get(endpointUrl)
+        .query({ name: 'chemical' })
+        .set('Cookie', [`accessToken=${accessToken}`])
+
+      expect(response.statusCode).toBe(200)
+      expect(response.body.items.map(({ name }) => name)).toEqual(['Chemical Category'])
+    })
+
+    it('should return all categories when the search name is empty', async () => {
+      const response = await app
+        .get(endpointUrl)
+        .query({ name: '' })
+        .set('Cookie', [`accessToken=${accessToken}`])
+
+      expect(response.statusCode).toBe(200)
+      expect(response.body.items.map(({ name }) => name)).toEqual(['Chemical Category'])
+    })
+
+    it('should find categories by partial name and exclude unrelated categories', async () => {
+      await ResourcesCategory.create([
+        { name: 'Chemistry Resources', author: currentUser.id },
+        { name: 'Biology Resources', author: currentUser.id }
+      ])
+
+      const response = await app
+        .get(endpointUrl)
+        .query({ name: 'chem' })
+        .set('Cookie', [`accessToken=${accessToken}`])
+
+      expect(response.statusCode).toBe(200)
+      expect(response.body.items.map(({ name }) => name)).toEqual(
+        expect.arrayContaining(['Chemical Category', 'Chemistry Resources'])
+      )
+      expect(response.body.items).toHaveLength(2)
+    })
+
+    it('should combine category name search with sorting and pagination', async () => {
+      await ResourcesCategory.create([
+        { name: 'Alpha Topic', author: currentUser.id },
+        { name: 'Beta Topic', author: currentUser.id },
+        { name: 'Gamma Topic', author: currentUser.id }
+      ])
+
+      const response = await app
+        .get(endpointUrl)
+        .query({
+          name: 'topic',
+          sort: { order: 'asc', orderBy: 'name' },
+          skip: 1,
+          limit: 1
+        })
+        .set('Cookie', [`accessToken=${accessToken}`])
+
+      expect(response.statusCode).toBe(200)
+      expect(response.body.count).toBe(3)
+      expect(response.body.items.map(({ name }) => name)).toEqual(['Beta Topic'])
+    })
+
+    it('should sort categories by updatedAt in both directions', async () => {
+      const secondCategory = await app
+        .post(endpointUrl)
+        .send({ name: 'Biology Category' })
+        .set('Cookie', [`accessToken=${accessToken}`])
+      const olderDate = new Date('2024-01-01T00:00:00.000Z')
+      const newerDate = new Date('2024-02-01T00:00:00.000Z')
+
+      await ResourcesCategory.collection.updateOne(
+        { _id: new Types.ObjectId(testResourceCategory.body._id) },
+        { $set: { updatedAt: newerDate } }
+      )
+      await ResourcesCategory.collection.updateOne(
+        { _id: new Types.ObjectId(secondCategory.body._id) },
+        { $set: { updatedAt: olderDate } }
+      )
+
+      const ascendingResponse = await app
+        .get(endpointUrl)
+        .query({
+          sort: { order: 'asc', orderBy: 'updatedAt' },
+          skip: 0,
+          limit: 10
+        })
+        .set('Cookie', [`accessToken=${accessToken}`])
+      const descendingResponse = await app
+        .get(endpointUrl)
+        .query({
+          sort: { order: 'desc', orderBy: 'updatedAt' },
+          skip: 0,
+          limit: 10
+        })
+        .set('Cookie', [`accessToken=${accessToken}`])
+
+      expect(ascendingResponse.body.items.map(({ _id }) => _id)).toEqual([
+        secondCategory.body._id,
+        testResourceCategory.body._id
+      ])
+      expect(descendingResponse.body.items.map(({ _id }) => _id)).toEqual([
+        testResourceCategory.body._id,
+        secondCategory.body._id
+      ])
+    })
+  })
+
   describe(`PATCH ${endpointUrl}:id`, () => {
     it('should update resource category', async () => {
       const response = await app
@@ -107,6 +227,34 @@ describe('ResourceCategory controller', () => {
         .set('Cookie', [`accessToken=${studentAccessToken}`])
 
       expectError(403, FORBIDDEN, response)
+    })
+  })
+
+  describe(`DELETE ${endpointUrl}:id`, () => {
+    it('should delete resource category owned by the authenticated tutor', async () => {
+      const response = await app
+        .delete(endpointUrl + testResourceCategory.body._id)
+        .set('Cookie', [`accessToken=${accessToken}`])
+
+      expect(response.statusCode).toBe(204)
+      expect(await ResourcesCategory.exists({ _id: testResourceCategory.body._id })).toBeNull()
+    })
+
+    it("should throw FORBIDDEN when deleting another tutor's category", async () => {
+      const otherTutorAccessToken = await testUserAuthentication(app, otherTutorUserData)
+      const response = await app
+        .delete(endpointUrl + testResourceCategory.body._id)
+        .set('Cookie', [`accessToken=${otherTutorAccessToken}`])
+
+      expectError(403, FORBIDDEN, response)
+      expect(await ResourcesCategory.exists({ _id: testResourceCategory.body._id })).not.toBeNull()
+    })
+
+    it('should throw UNAUTHORIZED without an access token', async () => {
+      const response = await app.delete(endpointUrl + testResourceCategory.body._id)
+
+      expectError(401, UNAUTHORIZED, response)
+      expect(await ResourcesCategory.exists({ _id: testResourceCategory.body._id })).not.toBeNull()
     })
   })
 })

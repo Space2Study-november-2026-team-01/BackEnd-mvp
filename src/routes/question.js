@@ -14,10 +14,12 @@ const {
 
 router.use(authMiddleware)
 router.param('id', idValidation)
+router.param('questionId', idValidation)
 const params = [{ model: Question, idName: 'id' }]
+const questionParams = [{ model: Question, idName: 'questionId' }]
 
 router.get('/', asyncWrapper(questionController.getQuestions))
-router.get('/:questionId', isEntityValid({ params }), asyncWrapper(questionController.getQuestionById))
+router.get('/:questionId', isEntityValid({ params: questionParams }), asyncWrapper(questionController.getQuestionById))
 router.use(restrictTo(TUTOR))
 router.post('/', asyncWrapper(questionController.createQuestion))
 router.delete('/:id', isEntityValid({ params }), asyncWrapper(questionController.deleteQuestion))

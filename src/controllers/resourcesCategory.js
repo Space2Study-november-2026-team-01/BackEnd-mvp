@@ -16,7 +16,7 @@ const getResourcesCategories = async (req, res) => {
   const { id: author } = req.user
   const { name, sort, skip, limit } = req.query
 
-  const match = getMatchOptions({ author, name: getRegex(name) })
+  const match = getMatchOptions({ author, name: { ...getRegex(name), $options: 'i' } })
   const sortOptions = getSortOptions(sort)
 
   const resourcesCategories = await resourcesCategoryService.getResourcesCategories(
@@ -51,8 +51,9 @@ const updateResourceCategory = async (req, res) => {
 
 const deleteResourceCategory = async (req, res) => {
   const { id } = req.params
+  const { id: author } = req.user
 
-  await resourcesCategoryService.deleteResourceCategory(id)
+  await resourcesCategoryService.deleteResourceCategory(id, author)
 
   res.status(204).end()
 }
