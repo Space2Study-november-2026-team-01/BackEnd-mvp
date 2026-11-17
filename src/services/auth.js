@@ -139,7 +139,13 @@ const authService = {
       throw createError(400, BAD_REFRESH_TOKEN)
     }
 
-    const { _id, lastLoginAs, isFirstLogin } = await getUserById(tokenData.id)
+    const user = await getUserById(tokenData.id)
+
+    if (!user) {
+      throw createError(401, USER_NOT_FOUND)
+    }
+
+    const { _id, lastLoginAs, isFirstLogin } = user
 
     const tokens = tokenService.generateTokens({ id: _id, role: lastLoginAs, isFirstLogin })
     await tokenService.saveToken(_id, tokens.refreshToken, REFRESH_TOKEN)
