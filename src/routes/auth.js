@@ -3,12 +3,13 @@ const router = require('express').Router()
 const asyncWrapper = require('~/middlewares/asyncWrapper')
 const validationMiddleware = require('~/middlewares/validation')
 const langMiddleware = require('~/middlewares/appLanguage')
-
+const googleAuthValidationSchema = require('~/validation/schemas/googleAuth')
 const authController = require('~/controllers/auth')
 const signupValidationSchema = require('~/validation/schemas/signup')
 const { loginValidationSchema } = require('~/validation/schemas/login')
 const resetPasswordValidationSchema = require('~/validation/schemas/resetPassword')
 const forgotPasswordValidationSchema = require('~/validation/schemas/forgotPassword')
+const confirmEmailValidationSchema = require('~/validation/schemas/confirmEmail')
 
 router.post(
   '/signup',
@@ -17,6 +18,8 @@ router.post(
   asyncWrapper(authController.signup)
 )
 router.post('/login', validationMiddleware(loginValidationSchema), asyncWrapper(authController.login))
+// Маршрут для гугл-авторизації
+router.post('/google-auth', validationMiddleware(googleAuthValidationSchema), asyncWrapper(authController.googleLogin))
 router.post('/logout', asyncWrapper(authController.logout))
 router.get('/refresh', asyncWrapper(authController.refreshAccessToken))
 router.post(
@@ -30,6 +33,11 @@ router.patch(
   validationMiddleware(resetPasswordValidationSchema),
   langMiddleware,
   asyncWrapper(authController.updatePassword)
+)
+router.post(
+  '/confirm-email',
+  validationMiddleware(confirmEmailValidationSchema),
+  asyncWrapper(authController.confirmEmail)
 )
 
 module.exports = router

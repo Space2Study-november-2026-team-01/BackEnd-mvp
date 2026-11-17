@@ -60,6 +60,14 @@ const errors = {
     code: 'BAD_REFRESH_TOKEN',
     message: 'The refresh token is either invalid or has expired.'
   },
+  INVALID_GOOGLE_TOKEN: {
+    code: 'INVALID_GOOGLE_TOKEN',
+    message: 'Google ID token is invalid or email is not verified.'
+  },
+  GOOGLE_AUTH_NOT_CONFIGURED: {
+    code: 'GOOGLE_AUTH_NOT_CONFIGURED',
+    message: 'Google client id is not configured.'
+  },
   UNAUTHORIZED: {
     code: 'UNAUTHORIZED',
     message: 'The requested URL requires user authorization.'
@@ -74,6 +82,10 @@ const errors = {
   BAD_RESET_TOKEN: {
     code: 'BAD_RESET_TOKEN',
     message: 'The reset token is either invalid or has expired.'
+  },
+  BAD_CONFIRM_TOKEN: {
+    code: 'BAD_CONFIRM_TOKEN',
+    message: 'The confirmation token is either invalid or has expired.'
   },
   INVALID_TOKEN_NAME: {
     code: 'INVALID_TOKEN_NAME',
