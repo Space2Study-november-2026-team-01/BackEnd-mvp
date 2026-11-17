@@ -37,7 +37,9 @@ const options = {
     }
   },
 
-  apis: [path.join(__dirname, '*.js'), path.join(__dirname, '../src/routes/*.js')]
+  apis: [path.join(__dirname, '*.js'), path.join(__dirname, '../src/routes/*.js')].map((filePath) =>
+    filePath.split(path.sep).join('/')
+  )
 }
 
 const swaggerSpec = swaggerJsdoc(options)

@@ -78,6 +78,31 @@
  *           description: Must contain at least one digit and one letter.
  *           example: newPassword123
  *
+ *     GoogleAuthRequest:
+ *       type: object
+ *       required:
+ *         - token
+ *       properties:
+ *         token:
+ *           type: string
+ *           description: Google ID token.
+ *           example: eyJhbGciOiJSUzI1NiIsImtpZCI6IjEifQ
+ *         role:
+ *           type: string
+ *           enum: [student, tutor]
+ *           description: Required only when this Google account is not registered yet.
+ *           example: student
+ *
+ *     ConfirmEmailRequest:
+ *       type: object
+ *       required:
+ *         - confirmToken
+ *       properties:
+ *         confirmToken:
+ *           type: string
+ *           description: Email confirmation JWT received by email.
+ *           example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
+ *
  *     SignupResponse:
  *       type: object
  *       properties:
@@ -174,9 +199,7 @@
  *       - refreshToken: []
  *     responses:
  *       204:
- *         description: Successfully logged out. Authentication cookies are cleared.
- *       400:
- *         description: Invalid refresh token.
+ *         description: Successfully logged out. Authentication cookies are cleared. The response is 204 even when the refresh token is missing or unknown.
  */
 
 /**
@@ -250,6 +273,59 @@
  *         description: Password successfully updated.
  *       400:
  *         description: Invalid or expired reset token.
+ *       422:
+ *         description: Request validation failed.
+ */
+
+/**
+ * @swagger
+ * /auth/google-auth:
+ *   post:
+ *     summary: Log in with Google
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/GoogleAuthRequest'
+ *     responses:
+ *       200:
+ *         description: Successfully authenticated. A new user is created when the email is not registered. An unconfirmed local account is confirmed and its password is replaced. Access and refresh tokens are set in HTTP-only cookies. The access token is also returned in the response body.
+ *         headers:
+ *           Set-Cookie:
+ *             description: Sets accessToken and refreshToken cookies.
+ *             schema:
+ *               type: string
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ *       400:
+ *         description: A new account needs a role, or the Google profile has no usable first and last name within 30 characters.
+ *       401:
+ *         description: Google ID token is invalid or the email is not verified.
+ *       422:
+ *         description: Request validation failed.
+ */
+
+/**
+ * @swagger
+ * /auth/confirm-email:
+ *   post:
+ *     summary: Confirm email address
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ConfirmEmailRequest'
+ *     responses:
+ *       204:
+ *         description: Email successfully confirmed.
+ *       400:
+ *         description: Invalid, expired, or already used confirmation token.
  *       422:
  *         description: Request validation failed.
  */
