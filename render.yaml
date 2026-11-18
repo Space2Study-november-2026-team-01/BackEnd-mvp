@@ -1,0 +1,67 @@
+# Render Blueprint for the Space2Study API.
+# Apply this from the Render dashboard against the prod branch.
+# MongoDB is external: set MONGODB_URL to an Atlas connection string.
+# Leave Gmail and Azure values empty until those integrations are used.
+# Do not put real secrets in this file.
+
+services:
+  - type: web
+    name: space2study-backend
+    runtime: node
+    branch: prod
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: '24'
+      - key: NODE_ENV
+        value: production
+      # Fallback only. Render injects PORT, and the process prefers PORT.
+      - key: SERVER_PORT
+        value: '3000'
+      - key: SERVER_URL
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+      - key: COOKIE_DOMAIN
+        sync: false
+      - key: MONGODB_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: JWT_ACCESS_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d
+      - key: JWT_RESET_SECRET
+        sync: false
+      - key: JWT_RESET_EXPIRES_IN
+        value: 1h
+      - key: JWT_CONFIRM_SECRET
+        sync: false
+      - key: JWT_CONFIRM_EXPIRES_IN
+        value: 1d
+      - key: MAIL_USER
+        sync: false
+      - key: MAIL_PASS
+        sync: false
+      - key: MAIL_FIRSTNAME
+        value: Admin
+      - key: MAIL_LASTNAME
+        value: User
+      - key: GMAIL_CLIENT_ID
+        sync: false
+      - key: GMAIL_CLIENT_SECRET
+        sync: false
+      - key: GMAIL_REFRESH_TOKEN
+        sync: false
+      - key: GMAIL_REDIRECT_URI
+        value: https://developers.google.com/oauthplayground
+      - key: STORAGE_ACCOUNT
+        sync: false
+      - key: ACCESS_KEY
+        sync: false
+      - key: AZURE_HOST
+        sync: false
