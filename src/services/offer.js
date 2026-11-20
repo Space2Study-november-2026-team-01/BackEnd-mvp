@@ -1,5 +1,8 @@
 const Offer = require('~/models/offer')
 
+const { DOCUMENT_NOT_FOUND } = require('~/consts/errors')
+const { createError } = require('~/utils/errorsHelper')
+
 const filterAllowedFields = require('~/utils/filterAllowedFields')
 const { allowedOfferFieldsForUpdate } = require('~/validation/services/offer')
 
@@ -11,16 +14,16 @@ const offerService = {
 
   getOfferById: async (id) => {
     const offer = await Offer.findById(id)
-      .populate([
-        {
-          path: 'author',
-          select: ['firstName', 'lastName', 'totalReviews', 'averageRating', 'photo', 'professionalSummary', 'FAQ']
-        },
-        { path: 'subject', select: 'name' },
-        { path: 'category', select: 'appearance' }
-      ])
+      .populate({
+        path: 'author',
+        select: ['firstName', 'lastName', 'totalReviews', 'averageRating', 'photo', 'professionalSummary', 'FAQ']
+      })
       .lean()
       .exec()
+
+    if (!offer) {
+      throw createError(404, DOCUMENT_NOT_FOUND('Offer'))
+    }
 
     if (offer.author.FAQ && offer.authorRole in offer.author.FAQ) {
       offer.author.FAQ = offer.author.FAQ[offer.authorRole]
