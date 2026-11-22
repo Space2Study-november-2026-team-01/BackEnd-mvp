@@ -25,7 +25,8 @@ const defaults = {
   GMAIL_CLIENT_SECRET: 'test-client-secret',
   GMAIL_REFRESH_TOKEN: 'test-refresh-token',
   GMAIL_REDIRECT_URI: 'http://127.0.0.1:3000/oauth2callback',
-  GOOGLE_CLIENT_ID: 'test-google-client-id'
+  GOOGLE_CLIENT_ID: 'test-google-client-id',
+  CSC_API_KEY: 'test-csc-api-key'
 }
 
 for (const [key, value] of Object.entries(defaults)) {

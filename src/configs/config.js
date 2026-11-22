@@ -3,6 +3,7 @@ const config = {
   CLIENT_URL: process.env.CLIENT_URL,
   // Google Client ID
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+  CSC_API_KEY: process.env.CSC_API_KEY,
   COOKIE_DOMAIN: process.env.COOKIE_DOMAIN,
   SERVER_URL: process.env.SERVER_URL,
   SERVER_PORT: process.env.SERVER_PORT,
