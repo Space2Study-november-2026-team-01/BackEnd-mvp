@@ -4,6 +4,7 @@ const crypto = require('node:crypto')
 const { getUserByEmail, createUser, privateUpdateUser, getUserById } = require('~/services/user')
 const { verifyGoogleToken } = require('~/services/googleAuth')
 const { createError } = require('~/utils/errorsHelper')
+const { comparePassword } = require('~/utils/password')
 const {
   EMAIL_NOT_CONFIRMED,
   INCORRECT_CREDENTIALS,
@@ -60,7 +61,7 @@ const authService = {
       throw createError(401, USER_NOT_FOUND)
     }
 
-    const checkedPassword = password === user.password || isFromGoogle
+    const checkedPassword = isFromGoogle || (await comparePassword(password, user.password))
 
     if (!checkedPassword) {
       throw createError(401, INCORRECT_CREDENTIALS)

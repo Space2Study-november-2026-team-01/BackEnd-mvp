@@ -8,6 +8,7 @@ const Token = require('~/models/token')
 const emailService = require('~/services/email')
 const tokenService = require('~/services/token')
 const errors = require('~/consts/errors')
+const { comparePassword, hashPassword } = require('~/utils/password')
 
 jest.mock('~/services/email', () => ({
   sendEmail: jest.fn()
@@ -52,7 +53,7 @@ describe('Auth service', () => {
         userData.language
       )
 
-      const user = await User.findOne({ email: userData.email }).select('+isEmailConfirmed').lean()
+      const user = await User.findOne({ email: userData.email }).select('+isEmailConfirmed +password').lean()
       const token = await Token.findOne({ user: user._id })
 
       expect(result).toEqual({
@@ -67,6 +68,10 @@ describe('Auth service', () => {
         email: userData.email,
         isEmailConfirmed: false
       })
+
+      expect(user.password).not.toBe(userData.password)
+      expect(user.password).toBeTruthy()
+      expect(await comparePassword(userData.password, user.password)).toBe(true)
 
       expect(token.confirmToken).toBeTruthy()
 
@@ -125,7 +130,10 @@ describe('Auth service', () => {
     }
 
     it('should login user and save refresh token', async () => {
-      const user = await User.create(loginUser)
+      const user = await User.create({
+        ...loginUser,
+        password: await hashPassword(loginUser.password)
+      })
       const tokens = await authService.login(loginUser.email, loginUser.password)
       const savedUser = await User.findById(user._id).select('+isFirstLogin +lastLogin')
       const savedToken = await Token.findOne({ user: user._id })
@@ -141,7 +149,10 @@ describe('Auth service', () => {
     })
 
     it('should throw INCORRECT_CREDENTIALS for invalid password', async () => {
-      await User.create(loginUser)
+      await User.create({
+        ...loginUser,
+        password: await hashPassword(loginUser.password)
+      })
 
       await expect(authService.login(loginUser.email, 'wrong_password')).rejects.toThrow()
 
@@ -157,6 +168,7 @@ describe('Auth service', () => {
       await User.create({
         ...loginUser,
         email: 'unconfirmed@gmail.com',
+        password: await hashPassword(loginUser.password),
         isEmailConfirmed: false
       })
 

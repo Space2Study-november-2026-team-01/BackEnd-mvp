@@ -3,6 +3,7 @@ const databaseInitialization = require('~/initialization/database')
 const { serverCleanup } = require('~/test/setup')
 const User = require('~/models/user')
 const userService = require('~/services/user')
+const { comparePassword } = require('~/utils/password')
 
 const createUserData = (overrides = {}) => ({
   role: ['student'],
@@ -108,7 +109,7 @@ describe('User service', () => {
     it('should persist the user with the role and default confirmation state', async () => {
       const result = await userService.createUser('student', 'Test', 'User', 'created@example.com', 'testpass1', 'en')
       const savedUser = await User.findById(result._id)
-        .select('+appLanguage +lastLoginAs +isEmailConfirmed')
+        .select('+appLanguage +lastLoginAs +isEmailConfirmed +password')
         .lean()
         .exec()
 
@@ -121,6 +122,9 @@ describe('User service', () => {
         appLanguage: 'en',
         isEmailConfirmed: false
       })
+
+      expect(savedUser.password).not.toBe('testpass1')
+      expect(await comparePassword('testpass1', savedUser.password)).toBe(true)
     })
 
     it('should persist an explicitly confirmed email', async () => {
@@ -152,7 +156,7 @@ describe('User service', () => {
     it('should reject data that violates the user schema', async () => {
       await expect(
         userService.createUser('student', 'Test', 'User', 'invalid-password@example.com', 'short', 'en')
-      ).rejects.toMatchObject({ name: 'ValidationError' })
+      ).rejects.toThrow('Password cannot be shorter than 8 symbol.')
     })
   })
 
@@ -164,6 +168,20 @@ describe('User service', () => {
 
       const savedUser = await User.findById(user._id).select('+isEmailConfirmed').lean().exec()
       expect(savedUser.isEmailConfirmed).toBe(true)
+    })
+
+    it('should hash the password when updating it', async () => {
+      const user = await User.create(createUserData())
+      const newPassword = 'newtestpass123'
+
+      await userService.privateUpdateUser(user._id, {
+        password: newPassword
+      })
+
+      const savedUser = await User.findById(user._id).select('+password').lean().exec()
+
+      expect(savedUser.password).not.toBe(newPassword)
+      expect(await comparePassword(newPassword, savedUser.password)).toBe(true)
     })
 
     it('should reject an update when the user does not exist', async () => {
