@@ -68,6 +68,18 @@ const errors = {
     code: 'GOOGLE_AUTH_NOT_CONFIGURED',
     message: 'Google client id is not configured.'
   },
+  CSC_API_KEY_NOT_CONFIGURED: {
+    code: 'CSC_API_KEY_NOT_CONFIGURED',
+    message: 'CountryStateCity API key is not configured.'
+  },
+  LOCATION_PROVIDER_UNAVAILABLE: {
+    code: 'LOCATION_PROVIDER_UNAVAILABLE',
+    message: 'The location provider is currently unavailable.'
+  },
+  LOCATION_PROVIDER_TIMEOUT: {
+    code: 'LOCATION_PROVIDER_TIMEOUT',
+    message: 'The location provider request timed out.'
+  },
   UNAUTHORIZED: {
     code: 'UNAUTHORIZED',
     message: 'The requested URL requires user authorization.'
