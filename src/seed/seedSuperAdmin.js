@@ -6,16 +6,18 @@ const {
   roles: { SUPERADMIN }
 } = require('~/consts/auth')
 const logger = require('~/logger/logger')
+const { hashPassword } = require('~/utils/password')
 
 const SeedSuperAdmin = {
   createSuperAdmin: async () => {
     try {
+      const hashedPassword = await hashPassword(password)
       const superAdmin = {
         role: SUPERADMIN,
         firstName,
         lastName,
         email,
-        password,
+        password: hashedPassword,
         active: true,
         isEmailConfirmed: true
       }

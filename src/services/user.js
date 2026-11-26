@@ -1,6 +1,6 @@
 const User = require('~/models/user')
 const { createError } = require('~/utils/errorsHelper')
-
+const { hashPassword } = require('~/utils/password')
 const { DOCUMENT_NOT_FOUND, ALREADY_REGISTERED } = require('~/consts/errors')
 const filterAllowedFields = require('~/utils/filterAllowedFields')
 const { allowedUserFieldsForUpdate } = require('~/validation/services/user')
@@ -50,7 +50,7 @@ const userService = {
       throw createError(409, ALREADY_REGISTERED)
     }
 
-    return await User.create({
+    const user = new User({
       role,
       firstName,
       lastName,
@@ -60,10 +60,25 @@ const userService = {
       appLanguage,
       isEmailConfirmed
     })
+
+    await user.validate()
+
+    user.password = await hashPassword(password)
+
+    return await user.save()
   },
 
   privateUpdateUser: async (id, param) => {
-    const user = await User.findByIdAndUpdate(id, param, { new: true }).exec()
+    const updateData = { ...param }
+
+    if (updateData.password) {
+      const user = new User({ password: updateData.password })
+      await user.validate('password')
+
+      updateData.password = await hashPassword(updateData.password)
+    }
+
+    const user = await User.findByIdAndUpdate(id, updateData, { new: true }).exec()
 
     if (!user) {
       throw createError(404, DOCUMENT_NOT_FOUND([User.modelName]))
