@@ -119,7 +119,8 @@ describe('User service', () => {
         email: 'created@example.com',
         lastLoginAs: 'student',
         appLanguage: 'en',
-        isEmailConfirmed: false
+        isEmailConfirmed: false,
+        nativeLanguage: null
       })
     })
 

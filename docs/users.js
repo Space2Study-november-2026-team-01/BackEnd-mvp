@@ -60,6 +60,7 @@
  *                 type: string
  *         nativeLanguage:
  *           type: string
+ *           nullable: true
  *           enum: [English, Ukrainian, Polish, German, French, Spanish, Arabic]
  *         appLanguage:
  *           type: string
